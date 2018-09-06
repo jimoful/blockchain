@@ -30,6 +30,7 @@ namespace Oasis {
             std::make_tuple(buyer, _self, productPrice, string("buyTest"))
         ).send();
 
+        //TODO: 这里缺少，权限控制，此外如果product_id与buyer背包中已有item_id重复也会失败，因为item_id是primary key
         action(
             permission_level{ buyer, N(active) },  
             N(player), N(additem), 
@@ -82,7 +83,8 @@ namespace Oasis {
         });
     }
 
-    void Marketplace::update(account_name account, uint64_t product_id, uint64_t quantity) {
+    //TODO:需要增加权限控制
+    void Marketplace::update(account_name account, uint64_t product_id, int64_t quantity) {
         require_auth(account);
 
         productIndex products(_self, _self);
@@ -90,10 +92,15 @@ namespace Oasis {
         auto iterator = products.find(product_id);
         eosio_assert(iterator != products.end(), "Product not found");
 
-        //TODO: check the 'product.quantity + quantity > 0'
-        products.modify(iterator, account, [&](auto& product) {
-            product.quantity += quantity;
-        });
+        auto product = products.get(product_id);
+        if (product.quantity + quantity > 0) 
+        {
+            products.modify(iterator, account, [&](auto& product) {
+                product.quantity += quantity;
+            }); 
+        } else {
+           print(" Can not update, target quantity is: ", product.quantity + quantity); 
+        }
     }
 
     void Marketplace::remove(account_name account, uint64_t productId) {
